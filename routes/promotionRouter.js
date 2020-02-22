@@ -1,7 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const Promotion = require('../models/promotion');
-const authenticate = require('../authenticate')
+const authenticate = require('../authenticate');
 
 const promotionRouter = express.Router();
 
@@ -9,16 +9,16 @@ promotionRouter.use(bodyParser.json());
 
 promotionRouter.route('/')
 .get((req, res, next) => {
-    Promotion.find()
+    Promotion.find() //queries database for all docs that were instantiated using the Promotion model
     .then(promotions => {
         res.statusCode = 200;
         res.setHeader('Content-Type', 'application/json');
-        res.json(promotions);
+        res.json(promotions);    //send json data to the client to the response stream, also automatically closes the stream afterwards, so no need for a res.end() method
     })
     .catch(err => next(err));
 })
-.post(authenticate.verifyUser, (req, res, next) => {
-    Promotion.create(req.body)
+.post(authenticate.verifyAdmin, (req, res, next) => {
+    Promotion.create(req.body)   //create new Promotion doc and save to server
     .then(promotion => {
         console.log('Promotion Created ', promotion);
         res.statusCode = 200;
@@ -31,7 +31,7 @@ promotionRouter.route('/')
     res.statusCode = 403;
     res.end('PUT operation not supported on /promotions');
 })
-.delete(authenticate.verifyUser, (req, res, next) => {
+.delete(authenticate.verifyAdmin, (req, res, next) => {
     Promotion.deleteMany()
     .then(response => {
         res.statusCode = 200;
@@ -41,43 +41,22 @@ promotionRouter.route('/')
     .catch(err => next(err));
 });
 
+
 promotionRouter.route('/:promotionId')
 .get((req, res, next) => {
     Promotion.findById(req.params.promotionId)
     .then(promotion => {
-        if (promotion) {
-            res.statusCode = 200;
-            res.setHeader('Content-Type', 'application/json');
-            res.json(promotion);
-        } else {
-            err = new Error(`Promotion ${req.params.promotionId} not found`);
-            err.status = 404;
-            return next(err);
-        }
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
+        res.json(promotion);
     })
     .catch(err => next(err));
 })
-.post(authenticate.verifyUser, (req, res, next) => {
-    Promotion.findById(req.params.promotionId)
-    .then(promotion => {
-        if (promotion) {
-            promotion.comments.push(req.body);
-            promotion.save()
-            .then(promotion => {
-                res.statusCode = 200;
-                res.setHeader('Content-Type', 'application/json');
-                res.json(promotion);
-            })
-            .catch(err => next(err));
-        } else {
-            err = new Error(`Promotion ${req.params.promotionId} not found`);
-            err.status = 404;
-            return next(err);
-        }
-    })
-    .catch(err => next(err));
+.post(authenticate.verifyUser, (req, res) => {
+    res.statusCode = 403;
+    res.end(`POST operation not supported on /promotions/${req.params.promotionId}`);
 })
-.put(authenticate.verifyUser, (req, res, next) => {
+.put(authenticate.verifyAdmin, (req, res, next) => {
     Promotion.findByIdAndUpdate(req.params.promotionId, {
         $set: req.body
     }, { new: true })
@@ -88,7 +67,7 @@ promotionRouter.route('/:promotionId')
     })
     .catch(err => next(err));
 })
-.delete(authenticate.verifyUser, (req, res, next) => {
+.delete(authenticate.verifyAdmin, (req, res, next) => {
     Promotion.findByIdAndDelete(req.params.promotionId)
     .then(response => {
         res.statusCode = 200;
@@ -96,7 +75,6 @@ promotionRouter.route('/:promotionId')
         res.json(response);
     })
     .catch(err => next(err));
-})
-
+});
 
 module.exports = promotionRouter;
